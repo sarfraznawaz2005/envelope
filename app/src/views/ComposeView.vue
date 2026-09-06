@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useEngine } from '@/engine'
 import { buildForwardHtml, buildForwardText, buildReplyQuoteHtml, buildReplyQuoteText, withPrefix } from '@/lib/quote-mail'
-import type { ComposeAttachment, MessageAddress, MessageDetail, ReplyMode } from '@/shared/rpc'
+import type { ComposeAttachment, MessageAddress, MessageDetail, ReplyMode, Signature } from '@/shared/rpc'
 import { useAccountsStore } from '@/stores/accounts'
 import { Check, Paperclip, PenLine, Send, Trash2, X } from '@lucide/vue'
 import { useTimeAgo } from '@vueuse/core'
@@ -49,8 +49,9 @@ const bootError = ref<string | null>(null)
 
 const account = computed(() => (accountId.value ? accounts.byId.get(accountId.value) : null))
 
-function sigToHtml(content: string): string {
-  return `<p>${content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\r?\n/g, '<br>')}</p>`
+function sigToHtml(sig: Signature): string {
+  if (sig.isHtml) return sig.content
+  return `<p>${sig.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\r?\n/g, '<br>')}</p>`
 }
 
 async function loadForwardAttachments(original: MessageDetail) {
@@ -74,7 +75,7 @@ async function applySignature(bodyHtml: string, bodyText: string): Promise<{ htm
   const sig = await engine.api.signatureGet(accountId.value)
   if (!sig || !sig.content) return { html: bodyHtml, text: bodyText }
   if (replyMode.value && !sig.useOnReply) return { html: bodyHtml, text: bodyText }
-  const sigHtml = sigToHtml(sig.content)
+  const sigHtml = sigToHtml(sig)
   const sigText = sig.content
   if (!replyMode.value) return { html: bodyHtml + sigHtml, text: bodyText ? `${bodyText}\n\n${sigText}` : sigText }
   return sig.position === 'above'
@@ -176,7 +177,7 @@ async function insertSignature() {
     if (plainMode.value) {
       plainText.value = plainText.value ? `${plainText.value}\n\n${sig.content}` : sig.content
     } else {
-      mailEditor.value?.insertAtEnd(sigToHtml(sig.content))
+      mailEditor.value?.insertAtEnd(sigToHtml(sig))
     }
   } catch (e) {
     toast.error((e as Error).message)

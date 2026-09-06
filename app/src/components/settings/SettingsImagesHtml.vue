@@ -46,15 +46,15 @@ async function removeSender(pattern: string) {
     <RadioGroup v-model="policy" class="space-y-2 mb-6">
       <div class="flex items-start gap-2">
         <RadioGroupItem id="img-never" value="never" class="mt-0.5" />
-        <Label for="img-never" class="flex flex-col gap-0.5 font-normal"><b>Never load</b><span class="text-xs text-muted-foreground">Show a "Load images" button on each mail.</span></Label>
+        <Label for="img-never" class="flex flex-col items-start gap-0.5 font-normal"><b>Never load</b><span class="text-xs text-muted-foreground">Show a "Load images" button on each mail.</span></Label>
       </div>
       <div class="flex items-start gap-2">
         <RadioGroupItem id="img-ask" value="ask" class="mt-0.5" />
-        <Label for="img-ask" class="flex flex-col gap-0.5 font-normal"><b>Ask</b><span class="text-xs text-muted-foreground">Block, but remember "always for this sender". Recommended.</span></Label>
+        <Label for="img-ask" class="flex flex-col items-start gap-0.5 font-normal"><b>Ask</b><span class="text-xs text-muted-foreground">Block, but remember "always for this sender". Recommended.</span></Label>
       </div>
       <div class="flex items-start gap-2">
         <RadioGroupItem id="img-always" value="always" class="mt-0.5" />
-        <Label for="img-always" class="flex flex-col gap-0.5 font-normal"><b>Always load</b><span class="text-xs text-muted-foreground">Least private.</span></Label>
+        <Label for="img-always" class="flex flex-col items-start gap-0.5 font-normal"><b>Always load</b><span class="text-xs text-muted-foreground">Least private.</span></Label>
       </div>
     </RadioGroup>
 

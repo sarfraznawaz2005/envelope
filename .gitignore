@@ -23,3 +23,5 @@ mailclient-settings.json
 # rolling internal dev log — not meant for the public repo
 *.bat
 TODO.md
+start-app-hidden.vbs
+start-relay-hidden.vbs
