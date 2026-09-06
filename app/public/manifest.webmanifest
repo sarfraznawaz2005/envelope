@@ -1,0 +1,13 @@
+{
+  "name": "Envelope",
+  "short_name": "Envelope",
+  "description": "A browser-only email client. IMAP, POP3, and SMTP — no app server, your mail stays on this device.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#7e14ff",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

@@ -1,0 +1,25 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+Thumbs.db
+
+# local relay config may hold a token
+relay/relay.config.json
+
+# local data folder used by the app's disk auto-save
+data/
+
+# real local mail database + settings (the app's disk auto-save can write
+# these here) — never meant to be committed, they're one person's real mail
+mailclient.db
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+mailclient-settings.json
+
+# personal convenience scripts for running this on one machine, and the
+# rolling internal dev log — not meant for the public repo
+*.bat
+TODO.md

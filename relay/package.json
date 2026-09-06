@@ -1,0 +1,25 @@
+{
+  "name": "envelope-relay",
+  "version": "0.1.0",
+  "description": "Tiny WebSocket -> TCP/TLS relay for the Envelope browser app. Copies bytes only. No mail logic.",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "envelope-relay": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js --verbose",
+    "build:exe": "node build-exe.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "postject": "1.0.0-alpha.6"
+  }
+}

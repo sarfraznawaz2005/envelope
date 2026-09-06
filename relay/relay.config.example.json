@@ -1,0 +1,11 @@
+{
+  "port": 8765,
+  "host": "127.0.0.1",
+  "token": "change-me-to-a-long-random-string",
+  "allowHosts": [],
+  "allowPorts": [],
+  "allowOrigins": [],
+  "maxConns": 64,
+  "verbose": false,
+  "_comment": "If you remove the token line entirely, the relay generates a random one at startup and prints it. Only set noToken:true if you understand that any web page in the same browser could then use this relay as a proxy."
+}
