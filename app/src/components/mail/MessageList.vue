@@ -200,14 +200,14 @@ function accountName(accountId: number): string {
             </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
-                <span class="truncate" :class="!mail.messages[vr.index]!.seen ? 'font-semibold' : ''">{{ mail.messages[vr.index]!.from }}</span>
+                <span class="truncate" :class="!mail.messages[vr.index]!.seen ? 'font-bold text-black dark:text-white' : ''">{{ mail.messages[vr.index]!.from }}</span>
                 <span
                   v-if="mail.messages[vr.index]!.threadCount"
                   class="text-xs text-muted-foreground shrink-0 bg-muted rounded-full px-1.5"
                 >({{ mail.messages[vr.index]!.threadCount }})</span>
                 <span class="ml-auto text-xs whitespace-nowrap" :class="!mail.messages[vr.index]!.seen ? 'text-primary' : 'text-muted-foreground'">{{ fmtDate(mail.messages[vr.index]!.date) }}</span>
               </div>
-              <div class="truncate" :class="!mail.messages[vr.index]!.seen ? 'font-semibold' : 'text-foreground/80'">{{ mail.messages[vr.index]!.subject || '(no subject)' }}</div>
+              <div class="truncate" :class="!mail.messages[vr.index]!.seen ? 'font-bold text-black dark:text-white' : 'text-foreground/80'">{{ mail.messages[vr.index]!.subject || '(no subject)' }}</div>
               <div class="flex items-center gap-2 text-xs text-muted-foreground">
                 <Paperclip v-if="mail.messages[vr.index]!.hasAttachments" class="size-3.5 shrink-0" />
                 <Flag v-if="mail.messages[vr.index]!.flagged" class="size-3.5 shrink-0 fill-amber-500 text-amber-500" />

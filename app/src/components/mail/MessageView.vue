@@ -343,7 +343,7 @@ function addrLine(list: { name: string; address: string }[]): string {
                   <span class="font-semibold">{{ mail.detail.from[0]?.name || mail.detail.from[0]?.address }}</span>
                   <span class="text-muted-foreground text-sm">&lt;{{ mail.detail.from[0]?.address }}&gt;</span>
                 </div>
-                <div class="text-xs text-muted-foreground mt-0.5">to {{ addrLine(mail.detail.to) }}<span v-if="mail.detail.cc.length"> · cc: {{ addrLine(mail.detail.cc) }}</span></div>
+                <div class="text-xs text-foreground/80 mt-0.5">to {{ addrLine(mail.detail.to) }}<span v-if="mail.detail.cc.length"> · cc: {{ addrLine(mail.detail.cc) }}</span></div>
               </div>
               <div class="flex flex-col items-end gap-1.5 shrink-0">
                 <div class="text-xs text-muted-foreground whitespace-nowrap">{{ fmtDate(mail.detail.date) }}</div>
