@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import RecipientChip from '@/components/mail/RecipientChip.vue'
 import { useEngine } from '@/engine'
 import { avatarColor, avatarInitials } from '@/lib/avatar'
 import { sanitizeMailHtml, unblockImages } from '@/lib/sanitize-mail'
@@ -343,7 +344,18 @@ function addrLine(list: { name: string; address: string }[]): string {
                   <span class="font-semibold">{{ mail.detail.from[0]?.name || mail.detail.from[0]?.address }}</span>
                   <span class="text-muted-foreground text-sm">&lt;{{ mail.detail.from[0]?.address }}&gt;</span>
                 </div>
-                <div class="text-xs text-foreground/80 mt-0.5">to {{ addrLine(mail.detail.to) }}<span v-if="mail.detail.cc.length"> · cc: {{ addrLine(mail.detail.cc) }}</span></div>
+                <div class="text-xs text-foreground/80 mt-0.5">
+                  <span class="font-bold text-primary">to</span>
+                  <template v-for="(a, i) in mail.detail.to" :key="'to' + i"><RecipientChip :name="a.name" :address="a.address" />{{ i < mail.detail.to.length - 1 ? ', ' : '' }}</template>
+                  <template v-if="mail.detail.cc.length">
+                    · <span class="font-bold text-primary">cc:</span>
+                    <template v-for="(a, i) in mail.detail.cc" :key="'cc' + i"><RecipientChip :name="a.name" :address="a.address" />{{ i < mail.detail.cc.length - 1 ? ', ' : '' }}</template>
+                  </template>
+                  <template v-if="mail.detail.bcc?.length">
+                    · <span class="font-bold text-primary">bcc:</span>
+                    <template v-for="(a, i) in mail.detail.bcc" :key="'bcc' + i"><RecipientChip :name="a.name" :address="a.address" />{{ i < mail.detail.bcc.length - 1 ? ', ' : '' }}</template>
+                  </template>
+                </div>
               </div>
               <div class="flex flex-col items-end gap-1.5 shrink-0">
                 <div class="text-xs text-muted-foreground whitespace-nowrap">{{ fmtDate(mail.detail.date) }}</div>
