@@ -220,6 +220,13 @@ function threadOrder(id: number): number {
   return threadRank.value.get(id) ?? 0
 }
 
+// Position of the open message in the thread, newest = 0 (same order as the cards below).
+const threadPos = computed(() => (mail.detail ? threadOrder(mail.detail.id) : 0))
+function openThreadAdjacent(delta: number) {
+  const target = [...threadRank.value.entries()].find(([, rank]) => rank === threadPos.value + delta)
+  if (target) void mail.openMessage(target[0])
+}
+
 const moveTargets = computed(() => {
   if (!mail.detail) return []
   return (mail.foldersByAccount[mail.detail.accountId] ?? []).filter(f => f.id !== mail.detail!.folderId && f.selectable)
@@ -309,9 +316,9 @@ function addrLine(list: { name: string; address: string }[]): string {
         <span class="w-px h-5 bg-border mx-1" />
         <Tooltip><TooltipTrigger as-child><Button size="icon" variant="ghost" @click="doPrint"><Printer class="size-4" /></Button></TooltipTrigger><TooltipContent>Print</TooltipContent></Tooltip>
         <Tooltip><TooltipTrigger as-child><Button size="icon" variant="ghost" @click="viewSource"><Code class="size-4" /></Button></TooltipTrigger><TooltipContent>View source</TooltipContent></Tooltip>
-        <div class="ml-auto flex items-center gap-1">
-          <Tooltip><TooltipTrigger as-child><Button size="icon" variant="ghost" @click="mail.openAdjacent(-1)"><ChevronUp class="size-4" /></Button></TooltipTrigger><TooltipContent>Previous (k)</TooltipContent></Tooltip>
-          <Tooltip><TooltipTrigger as-child><Button size="icon" variant="ghost" @click="mail.openAdjacent(1)"><ChevronDown class="size-4" /></Button></TooltipTrigger><TooltipContent>Next (j)</TooltipContent></Tooltip>
+        <div v-if="mail.thread.length > 1" class="ml-auto flex items-center gap-1">
+          <Tooltip><TooltipTrigger as-child><Button size="icon" variant="ghost" :disabled="threadPos <= 0" @click="openThreadAdjacent(-1)"><ChevronUp class="size-4" /></Button></TooltipTrigger><TooltipContent>Newer message in conversation</TooltipContent></Tooltip>
+          <Tooltip><TooltipTrigger as-child><Button size="icon" variant="ghost" :disabled="threadPos >= mail.thread.length - 1" @click="openThreadAdjacent(1)"><ChevronDown class="size-4" /></Button></TooltipTrigger><TooltipContent>Older message in conversation</TooltipContent></Tooltip>
         </div>
       </div>
 
