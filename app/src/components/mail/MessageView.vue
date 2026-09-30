@@ -63,6 +63,9 @@ watch(
     const addr = mail.detail?.from[0]?.address
     if (addr && id != null) senderAllowed.value = await engine.api.imagesIsSenderAllowed(addr).catch(() => false)
   },
+  // Also run on mount: coming back from another page re-creates this component while the message
+  // is still open, so the id never "changes" and the sender check would otherwise be skipped.
+  { immediate: true },
 )
 
 const allowImages = computed(() => settings.values['images.policy'] === 'always' || senderAllowed.value || imagesForceAllowed.value)
@@ -95,6 +98,7 @@ watch(
     const addr = mail.detail?.from[0]?.address
     if (addr && id != null) contactExists.value = !!(await engine.api.contactFindByEmail(addr).catch(() => null))
   },
+  { immediate: true },
 )
 async function addToContacts() {
   const from = mail.detail?.from[0]
