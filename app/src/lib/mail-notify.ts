@@ -51,6 +51,47 @@ async function refreshUnreadTitle() {
   document.title = total > 0 ? `(${total}) Envelope` : 'Envelope'
 }
 
+/** More than this many due notifications collapse into one summary. */
+const MAX_INDIVIDUAL = 3
+/** New mail arriving within this window is grouped together. */
+const BATCH_WINDOW_MS = 1500
+
+let pending: { ev: NewMailEvent; accountName: string }[] = []
+let flushTimer: ReturnType<typeof setTimeout> | undefined
+
+async function desktopNotify(title: string, body: string, tag: string) {
+  if (typeof Notification === 'undefined') return
+  if (Notification.permission === 'default') await Notification.requestPermission().catch(() => {})
+  if (Notification.permission !== 'granted') return
+  const n = new Notification(title, { body, tag })
+  n.onclick = () => window.focus()
+  if (useSettingsStore().values['notify.sound']) playChime()
+}
+
+async function flushPending() {
+  flushTimer = undefined
+  const batch = pending
+  pending = []
+  if (!batch.length) return
+  const settings = useSettingsStore()
+
+  if (batch.length > MAX_INDIVIDUAL) {
+    const text = `You have ${batch.length} new unread messages`
+    if (settings.values['notify.toast']) toast(text, { duration: 6000 })
+    if (settings.values['notify.desktop']) await desktopNotify('New mail', text, 'mail-summary')
+    return
+  }
+
+  for (const { ev, accountName } of batch) {
+    if (settings.values['notify.toast']) {
+      toast.custom(NewMailToast, { componentProps: { event: ev, accountName }, duration: 6000 })
+    }
+    if (settings.values['notify.desktop']) {
+      await desktopNotify(ev.subject || '(no subject)', `${ev.from}\n${ev.snippet}`, `mail-${ev.id}`)
+    }
+  }
+}
+
 export function useMailNotify() {
   if (started) return
   started = true
@@ -68,21 +109,9 @@ export function useMailNotify() {
     const account = accounts.byId.get(ev.accountId)
     if (account && !account.notify) return
 
-    if (settings.values['notify.toast']) {
-      toast.custom(NewMailToast, {
-        componentProps: { event: ev, accountName: account?.name ?? '' },
-        duration: 6000,
-      })
-    }
-
-    if (settings.values['notify.desktop'] && typeof Notification !== 'undefined') {
-      if (Notification.permission === 'default') await Notification.requestPermission().catch(() => {})
-      if (Notification.permission === 'granted') {
-        const n = new Notification(ev.subject || '(no subject)', { body: `${ev.from}\n${ev.snippet}`, tag: `mail-${ev.id}` })
-        n.onclick = () => window.focus()
-        if (settings.values['notify.sound']) playChime()
-      }
-    }
+    pending.push({ ev, accountName: account?.name ?? '' })
+    if (flushTimer) clearTimeout(flushTimer)
+    flushTimer = setTimeout(() => void flushPending(), BATCH_WINDOW_MS)
   })
 
   engine.on('folders:changed', () => void refreshUnreadTitle())
