@@ -344,7 +344,8 @@ function addrLine(list: { name: string; address: string }[]): string {
               @click="mail.openMessage(m.id)"
             >
               <div class="size-7 rounded-full text-white flex items-center justify-center text-[10px] font-bold shrink-0" :class="avatarColor(m.from)">{{ avatarInitials(m.from) }}</div>
-              <div class="flex-1 truncate"><span class="text-foreground font-medium">{{ m.from }}</span> — {{ m.subject }}</div>
+              <div class="flex-1 truncate" :class="m.seen ? '' : 'font-bold text-foreground'"><span class="text-foreground" :class="m.seen ? 'font-medium' : 'font-bold'">{{ m.from }}</span> — {{ m.subject }}</div>
+              <span v-if="!m.seen" class="size-2 rounded-full bg-primary shrink-0" title="Unread" />
             </button>
 
           <div class="border rounded-lg" :style="{ order: threadOrder(mail.detail.id) }">
