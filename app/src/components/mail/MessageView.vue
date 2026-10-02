@@ -130,7 +130,7 @@ const currentLabel = computed(() => senderLabelFor(senderAddress.value))
 async function applyLabel(color: string) {
   const from = mail.detail?.from[0]
   if (!from) return
-  const name = currentLabel.value?.name || (from.name || from.address).trim()
+  const name = currentLabel.value?.name || from.address.trim()
   await setSenderLabel(from.address, { name, color }).catch(e => toast.error((e as Error).message))
 }
 async function renameLabel() {
@@ -341,14 +341,9 @@ function addrLine(list: { name: string; address: string }[]): string {
           <TooltipContent>Flag</TooltipContent>
         </Tooltip>
         <DropdownMenu v-if="senderAddress">
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <DropdownMenuTrigger as-child>
-                <Button size="icon" variant="ghost"><Tag class="size-4" :class="currentLabel ? 'text-primary' : ''" /></Button>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent>Label this sender</TooltipContent>
-          </Tooltip>
+          <DropdownMenuTrigger as-child>
+            <Button size="icon" variant="ghost" title="Label this sender"><Tag class="size-4" :class="currentLabel ? 'text-primary' : ''" /></Button>
+          </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem v-for="(cls, color) in LABEL_COLORS" :key="color" @click="applyLabel(color)">
               <span class="size-3 rounded-sm mr-2" :class="cls" />{{ color }}
