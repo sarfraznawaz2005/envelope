@@ -7,6 +7,7 @@ import RecipientChip from '@/components/mail/RecipientChip.vue'
 import { useEngine } from '@/engine'
 import { avatarColor, avatarInitials } from '@/lib/avatar'
 import { sanitizeMailHtml, unblockImages } from '@/lib/sanitize-mail'
+import { LABEL_COLORS, loadSenderLabels, senderLabelFor, setSenderLabel } from '@/lib/sender-labels'
 import type { MessageAttachment } from '@/shared/rpc'
 import { useAccountsStore } from '@/stores/accounts'
 import { useMailStore } from '@/stores/mail'
@@ -31,6 +32,7 @@ import {
   ReplyAll,
   Forward,
   ShieldAlert,
+  Tag,
   Trash2,
   UserCheck,
   UserPlus,
@@ -120,6 +122,27 @@ async function addToContacts() {
     toast.error((e as Error).message)
   }
 }
+// ---------- sender label ----------
+
+void loadSenderLabels()
+const senderAddress = computed(() => mail.detail?.from[0]?.address ?? '')
+const currentLabel = computed(() => senderLabelFor(senderAddress.value))
+async function applyLabel(color: string) {
+  const from = mail.detail?.from[0]
+  if (!from) return
+  const name = currentLabel.value?.name || (from.name || from.address).trim()
+  await setSenderLabel(from.address, { name, color }).catch(e => toast.error((e as Error).message))
+}
+async function renameLabel() {
+  const cur = currentLabel.value
+  if (!cur) return
+  const name = window.prompt('Label name', cur.name)?.trim()
+  if (name) await setSenderLabel(cur.email, { name, color: cur.color }).catch(e => toast.error((e as Error).message))
+}
+async function removeLabel() {
+  if (senderAddress.value) await setSenderLabel(senderAddress.value, null).catch(e => toast.error((e as Error).message))
+}
+
 const showHtml = computed(() => settings.values['html.enabled'] && !!mail.detail?.html)
 
 const sanitized = computed(() => {
@@ -317,6 +340,23 @@ function addrLine(list: { name: string; address: string }[]): string {
           <TooltipTrigger as-child><Button size="icon" variant="ghost" @click="toggleFlag"><Flag class="size-4" :class="mail.detail.flagged ? 'fill-amber-500 text-amber-500' : ''" /></Button></TooltipTrigger>
           <TooltipContent>Flag</TooltipContent>
         </Tooltip>
+        <DropdownMenu v-if="senderAddress">
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <DropdownMenuTrigger as-child>
+                <Button size="icon" variant="ghost"><Tag class="size-4" :class="currentLabel ? 'text-primary' : ''" /></Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Label this sender</TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent>
+            <DropdownMenuItem v-for="(cls, color) in LABEL_COLORS" :key="color" @click="applyLabel(color)">
+              <span class="size-3 rounded-sm mr-2" :class="cls" />{{ color }}
+            </DropdownMenuItem>
+            <DropdownMenuItem v-if="currentLabel" @click="renameLabel">Rename label…</DropdownMenuItem>
+            <DropdownMenuItem v-if="currentLabel" @click="removeLabel">Remove label</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <span class="w-px h-5 bg-border mx-1" />
         <Tooltip><TooltipTrigger as-child><Button size="icon" variant="ghost" @click="doPrint"><Printer class="size-4" /></Button></TooltipTrigger><TooltipContent>Print</TooltipContent></Tooltip>
         <Tooltip><TooltipTrigger as-child><Button size="icon" variant="ghost" @click="viewSource"><Code class="size-4" /></Button></TooltipTrigger><TooltipContent>View source</TooltipContent></Tooltip>

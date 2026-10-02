@@ -289,6 +289,18 @@ export const MIGRATIONS: Migration[] = [
       )`,
     ],
   },
+  {
+    version: 5,
+    name: 'sender_labels',
+    up: [
+      // ---- colored label per sender address, shown as a pill in the message list. No row = no label.
+      `CREATE TABLE sender_labels (
+        email TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        color TEXT NOT NULL
+      )`,
+    ],
+  },
 ]
 
 export const SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1]!.version

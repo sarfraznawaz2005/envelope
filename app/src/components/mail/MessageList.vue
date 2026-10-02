@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import type { FolderSummary } from '@/shared/rpc'
 import { useEngine } from '@/engine'
 import { avatarColor, avatarInitials } from '@/lib/avatar'
+import { LABEL_COLORS, loadSenderLabels, senderLabelFor } from '@/lib/sender-labels'
 import { useAccountsStore } from '@/stores/accounts'
 import { useMailStore } from '@/stores/mail'
 import { Archive, Flag, FolderInput, MailOpen, Paperclip, RefreshCw, Search, Trash2 } from '@lucide/vue'
@@ -20,6 +21,7 @@ const engine = useEngine()
 const scrollParent = ref<HTMLElement | null>(null)
 const selected = ref<Set<number>>(new Set())
 const searchInput = ref(mail.searchQuery)
+void loadSenderLabels()
 
 const rowVirtualizer = useVirtualizer(
   computed(() => ({
@@ -205,7 +207,14 @@ function accountName(accountId: number): string {
                   v-if="mail.messages[vr.index]!.threadCount"
                   class="text-xs text-muted-foreground shrink-0 bg-muted rounded-full px-1.5"
                 >({{ mail.messages[vr.index]!.threadCount }})</span>
-                <span class="ml-auto text-xs whitespace-nowrap" :class="!mail.messages[vr.index]!.seen ? 'text-primary' : 'text-muted-foreground'">{{ fmtDate(mail.messages[vr.index]!.date) }}</span>
+                <div class="ml-auto flex flex-col items-end gap-0.5 shrink-0">
+                  <span class="text-xs whitespace-nowrap" :class="!mail.messages[vr.index]!.seen ? 'text-primary' : 'text-muted-foreground'">{{ fmtDate(mail.messages[vr.index]!.date) }}</span>
+                  <span
+                    v-if="senderLabelFor(mail.messages[vr.index]!.fromAddress)"
+                    class="px-1.5 rounded text-[11px] leading-4 max-w-28 truncate"
+                    :class="LABEL_COLORS[senderLabelFor(mail.messages[vr.index]!.fromAddress)!.color] ?? LABEL_COLORS.gray"
+                  >{{ senderLabelFor(mail.messages[vr.index]!.fromAddress)!.name }}</span>
+                </div>
               </div>
               <div class="truncate" :class="!mail.messages[vr.index]!.seen ? 'font-bold text-black dark:text-white' : 'text-foreground/80'">{{ mail.messages[vr.index]!.subject || '(no subject)' }}</div>
               <div class="flex items-center gap-2 text-xs text-muted-foreground">

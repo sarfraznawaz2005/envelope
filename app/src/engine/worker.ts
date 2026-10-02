@@ -27,6 +27,7 @@ import {
   contactsImportVcf,
   contactsList,
 } from './contacts'
+import { senderLabelSet, senderLabelsList } from './sender-labels'
 import { getSignature, setSignature } from './signatures'
 import { ruleDelete, ruleSave, rulesList, rulesReorder, rulesRunNow } from './rules'
 import { draftDelete, draftGet, draftSave } from './drafts'
@@ -351,6 +352,14 @@ serveRpc({
   async contactGroupCreate(name) {
     await boot
     return contactGroupCreate(name)
+  },
+  async senderLabelsList() {
+    await boot
+    return senderLabelsList()
+  },
+  async senderLabelSet(email, label) {
+    await boot
+    return senderLabelSet(email, label)
   },
   async contactsExportVcf(ids) {
     await boot

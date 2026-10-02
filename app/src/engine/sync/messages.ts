@@ -230,6 +230,7 @@ function rowToSummary(r: Row): MessageSummary {
     uid: Number(r.uid),
     subject: String(r.subject),
     from: from.map(a => (a.name ? `${a.name} <${a.address}>` : a.address)).join(', '),
+    fromAddress: from[0]?.address ?? '',
     date: r.date == null ? null : Number(r.date),
     seen: !!r.seen,
     flagged: !!r.flagged,

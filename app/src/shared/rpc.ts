@@ -133,12 +133,20 @@ export interface FolderSummary {
   unread: number
 }
 
+export interface SenderLabel {
+  email: string
+  name: string
+  color: string
+}
+
 export interface MessageSummary {
   id: number
   accountId: number
   uid: number
   subject: string
   from: string
+  /** Address of the first sender, used to look up its label. */
+  fromAddress: string
   date: number | null
   seen: boolean
   flagged: boolean
@@ -437,6 +445,9 @@ export interface EngineApi {
   contactMoveToSaved(id: number): Promise<void>
   contactGroupsList(): Promise<ContactGroup[]>
   contactGroupCreate(name: string): Promise<ContactGroup>
+  senderLabelsList(): Promise<SenderLabel[]>
+  /** Pass null to remove the label. */
+  senderLabelSet(email: string, label: { name: string; color: string } | null): Promise<void>
   contactsExportVcf(ids?: number[]): Promise<string>
   contactsImportVcf(text: string): Promise<{ imported: number }>
 
