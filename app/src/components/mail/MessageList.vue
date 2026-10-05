@@ -27,10 +27,15 @@ const rowVirtualizer = useVirtualizer(
   computed(() => ({
     count: mail.messages.length,
     getScrollElement: () => scrollParent.value,
-    estimateSize: () => 68,
+    estimateSize: () => 78,
     overscan: 8,
   })),
 )
+// Rows are measured after render so the absolute positions follow their real height
+// (otherwise a taller row spills over the divider of the next one).
+const measureRow = (el: unknown) => {
+  if (el instanceof Element) rowVirtualizer.value.measureElement(el)
+}
 const virtualRows = computed(() => rowVirtualizer.value.getVirtualItems())
 const totalSize = computed(() => rowVirtualizer.value.getTotalSize())
 
@@ -184,6 +189,8 @@ function accountName(accountId: number): string {
         <div
           v-for="vr in virtualRows"
           :key="String(vr.key)"
+          :data-index="vr.index"
+          :ref="measureRow"
           :style="{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vr.start}px)` }"
         >
           <div
@@ -207,20 +214,18 @@ function accountName(accountId: number): string {
                   v-if="mail.messages[vr.index]!.threadCount"
                   class="text-xs text-muted-foreground shrink-0 bg-muted rounded-full px-1.5"
                 >({{ mail.messages[vr.index]!.threadCount }})</span>
-                <div class="ml-auto flex flex-col items-end gap-0.5 shrink-0">
-                  <span class="text-xs whitespace-nowrap" :class="!mail.messages[vr.index]!.seen ? 'text-primary' : 'text-muted-foreground'">{{ fmtDate(mail.messages[vr.index]!.date) }}</span>
-                  <span
-                    v-if="senderLabelFor(mail.messages[vr.index]!.fromAddress)"
-                    class="px-1.5 rounded text-[11px] leading-4 max-w-28 truncate"
-                    :class="LABEL_COLORS[senderLabelFor(mail.messages[vr.index]!.fromAddress)!.color] ?? LABEL_COLORS.gray"
-                  >{{ senderLabelFor(mail.messages[vr.index]!.fromAddress)!.name }}</span>
-                </div>
+                <span class="ml-auto text-xs whitespace-nowrap" :class="!mail.messages[vr.index]!.seen ? 'text-primary' : 'text-muted-foreground'">{{ fmtDate(mail.messages[vr.index]!.date) }}</span>
               </div>
               <div class="truncate" :class="!mail.messages[vr.index]!.seen ? 'font-bold text-black dark:text-white' : 'text-foreground/80'">{{ mail.messages[vr.index]!.subject || '(no subject)' }}</div>
-              <div class="flex items-center gap-2 text-xs text-muted-foreground">
+              <div class="flex items-center gap-2 h-5 text-xs text-muted-foreground">
                 <Paperclip v-if="mail.messages[vr.index]!.hasAttachments" class="size-3.5 shrink-0" />
                 <Flag v-if="mail.messages[vr.index]!.flagged" class="size-3.5 shrink-0 fill-amber-500 text-amber-500" />
-                <span v-if="mail.selection.kind === 'unified'" class="ml-auto px-1 rounded bg-muted text-[10px] shrink-0">{{ accountName(mail.messages[vr.index]!.accountId) }}</span>
+                <span
+                  v-if="senderLabelFor(mail.messages[vr.index]!.fromAddress)"
+                  class="ml-auto px-1.5 rounded text-[11px] leading-4 max-w-40 truncate"
+                  :class="LABEL_COLORS[senderLabelFor(mail.messages[vr.index]!.fromAddress)!.color] ?? LABEL_COLORS.gray"
+                >{{ senderLabelFor(mail.messages[vr.index]!.fromAddress)!.name }}</span>
+                <span v-if="mail.selection.kind === 'unified'" class="px-1 rounded bg-muted text-[10px] shrink-0" :class="senderLabelFor(mail.messages[vr.index]!.fromAddress) ? '' : 'ml-auto'">{{ accountName(mail.messages[vr.index]!.accountId) }}</span>
               </div>
             </div>
           </div>
