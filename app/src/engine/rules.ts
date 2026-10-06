@@ -5,7 +5,7 @@
  */
 import type { RuleActionInput, RuleField, RuleInput, RuleOp, RuleRecord } from '@/shared/rpc'
 import { getDb, json, now, type Row } from './db'
-import { messageDelete, messageMoveToFolder, messageSetFlag, messageSpam } from './mail-actions'
+import { messageDelete, messageMoveToFolder, messageMoveToSpam, messageSetFlag } from './mail-actions'
 import { loadRules, matchesRule, type RuleMatchable } from './sync/rules'
 
 function hydrateRule(r: Row, conditions: Row[], actions: Row[]): RuleRecord {
@@ -135,7 +135,7 @@ export async function rulesRunNow(folderId: number): Promise<{ scanned: number; 
             break outer
           }
         } else if (action.kind === 'spam') {
-          await messageSpam(id)
+          await messageMoveToSpam(id)
           break outer
         }
       }

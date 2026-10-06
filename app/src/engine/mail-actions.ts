@@ -209,12 +209,71 @@ export async function messageArchive(id: number): Promise<void> {
   await messageMoveToFolder(id, Number(dest.id))
 }
 
-export async function messageSpam(id: number): Promise<void> {
+/** Moves one message to Spam. Used by rules, so it must not create rules or touch the thread. */
+export async function messageMoveToSpam(id: number): Promise<void> {
   const db = await getDb()
   const { account } = await loadContext(db, id)
   const dest = await findFolderByRole(db, account.id, 'spam')
   if (!dest) throw new Error('This account has no Spam folder.')
   await messageMoveToFolder(id, Number(dest.id))
+}
+
+/** Adds a "from contains <address> -> spam" rule unless one already exists. */
+async function ensureSpamRule(db: Database, accountId: number, address: string): Promise<void> {
+  const existing = await db.get<Row>(
+    `SELECT r.id FROM rules r
+       JOIN rule_conditions c ON c.rule_id = r.id AND c.field = 'from' AND c.op = 'contains' AND LOWER(c.value) = ?
+       JOIN rule_actions a ON a.rule_id = r.id AND a.kind = 'spam'
+      WHERE r.enabled = 1 AND (r.account_id IS NULL OR r.account_id = ?)`,
+    [address, accountId],
+  )
+  if (existing) return
+  await db.tx(async () => {
+    const maxOrder = await db.scalar<number>('SELECT COALESCE(MAX(sort_order), -1) FROM rules')
+    const ruleId = await db.insert('INSERT INTO rules (name, enabled, match_mode, account_id, sort_order, created_at) VALUES (?,?,?,?,?,?)', [
+      `Spam: ${address}`,
+      1,
+      'any',
+      accountId,
+      maxOrder + 1,
+      now(),
+    ])
+    await db.exec('INSERT INTO rule_conditions (rule_id, field, op, value) VALUES (?,?,?,?)', [ruleId, 'from', 'contains', address])
+    await db.exec('INSERT INTO rule_actions (rule_id, kind, arg) VALUES (?,?,?)', [ruleId, 'spam', ''])
+  })
+}
+
+/**
+ * The Spam button: moves the whole thread to Spam and adds a rule so future
+ * mail from this sender goes to Spam too. No rule is made for the account's own address.
+ */
+export async function messageSpam(id: number): Promise<void> {
+  const db = await getDb()
+  const { row, account } = await loadContext(db, id)
+  const dest = await findFolderByRole(db, account.id, 'spam')
+  if (!dest) throw new Error('This account has no Spam folder.')
+
+  const ids = [id]
+  if (row.thread_id != null) {
+    const others = await db.all<Row>('SELECT id FROM messages WHERE thread_id = ? AND account_id = ? AND folder_id != ? AND id != ?', [
+      row.thread_id,
+      account.id,
+      dest.id,
+      id,
+    ])
+    for (const o of others) ids.push(Number(o.id))
+  }
+  for (const mid of ids) {
+    try {
+      await messageMoveToFolder(mid, Number(dest.id))
+    } catch (e) {
+      if (mid === id) throw e
+      log('warn', `[mail-actions] could not move thread message ${mid} to spam: ${(e as Error).message}`)
+    }
+  }
+
+  const sender = addrList(row.from_json)[0]?.address?.trim().toLowerCase()
+  if (sender && sender !== account.email.trim().toLowerCase()) await ensureSpamRule(db, account.id, sender)
 }
 
 export async function messageDelete(id: number): Promise<void> {
