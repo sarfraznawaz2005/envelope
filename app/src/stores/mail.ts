@@ -200,8 +200,8 @@ export const useMailStore = defineStore('mail', () => {
     await engine().api.messageArchive(id)
     removeFromList(id)
   }
-  async function spam(id: number) {
-    await engine().api.messageSpam(id)
+  async function spam(id: number, futureAction: 'spam' | 'delete' = 'spam') {
+    await engine().api.messageSpam(id, futureAction)
     removeFromList(id)
   }
   async function remove(id: number) {

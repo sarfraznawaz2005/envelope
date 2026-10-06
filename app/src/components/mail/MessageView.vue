@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import RecipientChip from '@/components/mail/RecipientChip.vue'
 import { useEngine } from '@/engine'
@@ -227,7 +227,14 @@ async function guarded(fn: () => Promise<void>) {
   }
 }
 const doArchive = () => mail.detail && guarded(() => mail.archive(mail.detail!.id))
-const doSpam = () => mail.detail && guarded(() => mail.spam(mail.detail!.id))
+const spamAsk = ref(false)
+const doSpam = () => {
+  if (mail.detail) spamAsk.value = true
+}
+function confirmSpam(futureAction: 'spam' | 'delete') {
+  spamAsk.value = false
+  if (mail.detail) void guarded(() => mail.spam(mail.detail!.id, futureAction))
+}
 const doDelete = () => mail.detail && guarded(() => mail.remove(mail.detail!.id))
 const toggleUnread = () => mail.detail && guarded(() => mail.setFlag(mail.detail!.id, 'seen', !mail.detail!.seen))
 const toggleFlag = () => mail.detail && guarded(() => mail.setFlag(mail.detail!.id, 'flagged', !mail.detail!.flagged))
@@ -461,6 +468,23 @@ function addrLine(list: { name: string; address: string }[]): string {
         </div>
       </div>
     </div>
+
+    <Dialog v-model:open="spamAsk">
+      <DialogContent class="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Mark as spam</DialogTitle>
+          <DialogDescription>
+            This moves the conversation to Spam. What should happen to future mail from
+            <span class="font-medium text-foreground">{{ senderAddress || 'this sender' }}</span>?
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter class="gap-2 sm:gap-2">
+          <Button variant="outline" @click="spamAsk = false">Cancel</Button>
+          <Button variant="outline" @click="confirmSpam('spam')">Move to Spam</Button>
+          <Button variant="destructive" @click="confirmSpam('delete')">Delete automatically</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     <Dialog v-model:open="sourceOpen">
       <DialogContent class="max-w-3xl">

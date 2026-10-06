@@ -283,9 +283,9 @@ serveRpc({
     await boot
     return messageArchive(id)
   },
-  async messageSpam(id) {
+  async messageSpam(id, futureAction) {
     await boot
-    return messageSpam(id)
+    return messageSpam(id, futureAction)
   },
   async messageDelete(id) {
     await boot

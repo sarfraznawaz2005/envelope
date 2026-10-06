@@ -425,7 +425,8 @@ export interface EngineApi {
   messageSetFlag(id: number, flag: MessageFlagName, value: boolean): Promise<void>
   messageMoveToFolder(id: number, destFolderId: number): Promise<void>
   messageArchive(id: number): Promise<void>
-  messageSpam(id: number): Promise<void>
+  /** Moves the thread to Spam and adds a sender rule; `futureAction` is what that rule does to new mail. */
+  messageSpam(id: number, futureAction?: 'spam' | 'delete'): Promise<void>
   messageDelete(id: number): Promise<void>
   attachmentGet(id: number): Promise<{ filename: string; mime: string; data: Uint8Array }>
   imagesIsSenderAllowed(address: string): Promise<boolean>

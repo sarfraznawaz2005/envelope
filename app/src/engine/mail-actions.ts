@@ -218,20 +218,28 @@ export async function messageMoveToSpam(id: number): Promise<void> {
   await messageMoveToFolder(id, Number(dest.id))
 }
 
-/** Adds a "from contains <address> -> spam" rule unless one already exists. */
-async function ensureSpamRule(db: Database, accountId: number, address: string): Promise<void> {
-  const existing = await db.get<Row>(
-    `SELECT r.id FROM rules r
+/**
+ * Adds a "from contains <address> -> spam|delete" rule unless one already exists.
+ * An existing spam rule is upgraded to delete when the user opts in; a delete rule is never downgraded.
+ */
+async function ensureSenderRule(db: Database, accountId: number, address: string, kind: 'spam' | 'delete'): Promise<void> {
+  const existing = await db.all<Row>(
+    `SELECT r.id, a.id AS action_id, a.kind FROM rules r
        JOIN rule_conditions c ON c.rule_id = r.id AND c.field = 'from' AND c.op = 'contains' AND LOWER(c.value) = ?
-       JOIN rule_actions a ON a.rule_id = r.id AND a.kind = 'spam'
+       JOIN rule_actions a ON a.rule_id = r.id AND a.kind IN ('spam', 'delete')
       WHERE r.enabled = 1 AND (r.account_id IS NULL OR r.account_id = ?)`,
     [address, accountId],
   )
-  if (existing) return
+  if (existing.length) {
+    if (kind === 'delete') {
+      for (const e of existing) if (e.kind === 'spam') await db.exec("UPDATE rule_actions SET kind = 'delete' WHERE id = ?", [e.action_id])
+    }
+    return
+  }
   await db.tx(async () => {
     const maxOrder = await db.scalar<number>('SELECT COALESCE(MAX(sort_order), -1) FROM rules')
     const ruleId = await db.insert('INSERT INTO rules (name, enabled, match_mode, account_id, sort_order, created_at) VALUES (?,?,?,?,?,?)', [
-      `Spam: ${address}`,
+      `${kind === 'delete' ? 'Delete' : 'Spam'}: ${address}`,
       1,
       'any',
       accountId,
@@ -239,15 +247,16 @@ async function ensureSpamRule(db: Database, accountId: number, address: string):
       now(),
     ])
     await db.exec('INSERT INTO rule_conditions (rule_id, field, op, value) VALUES (?,?,?,?)', [ruleId, 'from', 'contains', address])
-    await db.exec('INSERT INTO rule_actions (rule_id, kind, arg) VALUES (?,?,?)', [ruleId, 'spam', ''])
+    await db.exec('INSERT INTO rule_actions (rule_id, kind, arg) VALUES (?,?,?)', [ruleId, kind, ''])
   })
 }
 
 /**
- * The Spam button: moves the whole thread to Spam and adds a rule so future
- * mail from this sender goes to Spam too. No rule is made for the account's own address.
+ * The Spam button: moves the whole thread to Spam and adds a rule so future mail from this
+ * sender is handled too (`futureAction`: moved to Spam, or deleted). No rule is made for the
+ * account's own address.
  */
-export async function messageSpam(id: number): Promise<void> {
+export async function messageSpam(id: number, futureAction: 'spam' | 'delete' = 'spam'): Promise<void> {
   const db = await getDb()
   const { row, account } = await loadContext(db, id)
   const dest = await findFolderByRole(db, account.id, 'spam')
@@ -273,7 +282,7 @@ export async function messageSpam(id: number): Promise<void> {
   }
 
   const sender = addrList(row.from_json)[0]?.address?.trim().toLowerCase()
-  if (sender && sender !== account.email.trim().toLowerCase()) await ensureSpamRule(db, account.id, sender)
+  if (sender && sender !== account.email.trim().toLowerCase()) await ensureSenderRule(db, account.id, sender, futureAction)
 }
 
 export async function messageDelete(id: number): Promise<void> {
