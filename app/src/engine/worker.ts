@@ -40,13 +40,13 @@ import {
   imagesIsSenderAllowed,
   imagesListAllowed,
   imagesRemoveSender,
-  messageArchive,
-  messageDelete,
   messageGet,
   messageGetSource,
-  messageMoveToFolder,
   messageSetFlag,
   messageSpam,
+  threadArchive,
+  threadDelete,
+  threadMoveToFolder,
 } from './mail-actions'
 
 const startedAt = Date.now()
@@ -277,11 +277,11 @@ serveRpc({
   },
   async messageMoveToFolder(id, destFolderId) {
     await boot
-    return messageMoveToFolder(id, destFolderId)
+    return threadMoveToFolder(id, destFolderId)
   },
   async messageArchive(id) {
     await boot
-    return messageArchive(id)
+    return threadArchive(id)
   },
   async messageSpam(id, futureAction) {
     await boot
@@ -289,7 +289,7 @@ serveRpc({
   },
   async messageDelete(id) {
     await boot
-    return messageDelete(id)
+    return threadDelete(id)
   },
   async attachmentGet(id) {
     await boot

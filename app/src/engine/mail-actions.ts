@@ -14,6 +14,7 @@ import { getDb, now, type Database, type Row } from './db'
 import { ImapClient } from './imap/client'
 import { makeSnippet, parseMessage, type ParsedAttachment } from './mime/parse'
 import { emit, log } from './rpc/server'
+import { getSetting } from './settings'
 import { syncNow } from './sync'
 
 export async function withImap<T>(account: Account, fn: (c: ImapClient) => Promise<T>): Promise<T> {
@@ -207,6 +208,84 @@ export async function messageArchive(id: number): Promise<void> {
   const dest = await findFolderByRole(db, account.id, 'archive')
   if (!dest) throw new Error('This account has no Archive folder.')
   await messageMoveToFolder(id, Number(dest.id))
+}
+
+/**
+ * The list shows one row per thread (when threading is on), so a row action must hit every
+ * message of that thread in the same folder, not just the one message the row points at.
+ */
+async function sameFolderThreadIds(db: Database, id: number): Promise<number[]> {
+  const row = await db.get<Row>('SELECT thread_id, folder_id FROM messages WHERE id = ?', [id])
+  if (!row || row.thread_id == null || !(await getSetting('mail.threads'))) return [id]
+  const rows = await db.all<Row>('SELECT id FROM messages WHERE thread_id = ? AND folder_id = ?', [row.thread_id, row.folder_id])
+  const ids = rows.map(r => Number(r.id))
+  return ids.includes(id) ? ids : [id, ...ids]
+}
+
+/** Runs `fn` on each message of the thread; the clicked message must succeed, the rest are best effort. */
+async function forEachInThread(id: number, fn: (mid: number) => Promise<void>): Promise<void> {
+  const db = await getDb()
+  for (const mid of await sameFolderThreadIds(db, id)) {
+    try {
+      await fn(mid)
+    } catch (e) {
+      if (mid === id) throw e
+      log('warn', `[mail-actions] thread action failed for message ${mid}: ${(e as Error).message}`)
+    }
+  }
+}
+
+/**
+ * "Not spam": taking mail out of Spam must also drop the auto-spam/delete rules made for its
+ * senders, otherwise sync sees the moved mail as new and the rule sends it straight back.
+ */
+async function forgetSenderRules(db: Database, accountId: number, fromJson: unknown): Promise<void> {
+  const values = new Set<string>()
+  for (const a of addrList(fromJson)) {
+    const address = a.address?.trim().toLowerCase()
+    if (!address) continue
+    values.add(address)
+    const name = a.name?.trim().toLowerCase()
+    if (name && name !== address) values.add(`${name} ${address}`)
+  }
+  if (!values.size) return
+  const rules = await db.all<Row>(
+    `SELECT r.id, c.value FROM rules r
+       JOIN rule_conditions c ON c.rule_id = r.id AND c.field = 'from' AND c.op = 'contains'
+      WHERE (r.name LIKE 'Spam: %' OR r.name LIKE 'Delete: %') AND (r.account_id IS NULL OR r.account_id = ?)
+        AND EXISTS (SELECT 1 FROM rule_actions a WHERE a.rule_id = r.id AND a.kind IN ('spam', 'delete'))`,
+    [accountId],
+  )
+  for (const r of rules) if (values.has(String(r.value).toLowerCase())) await db.exec('DELETE FROM rules WHERE id = ?', [r.id])
+}
+
+async function moveThreadFromRow(id: number, destFolderId: number): Promise<void> {
+  const db = await getDb()
+  const { folder, account } = await loadContext(db, id)
+  const dest = await db.get<Row>('SELECT role FROM folders WHERE id = ? AND account_id = ?', [destFolderId, account.id])
+  const leavingSpam = folder.role === 'spam' && dest?.role !== 'spam' && dest?.role !== 'trash'
+  const froms: unknown[] = []
+  if (leavingSpam) {
+    for (const mid of await sameFolderThreadIds(db, id)) {
+      const m = await db.get<Row>('SELECT from_json FROM messages WHERE id = ?', [mid])
+      if (m) froms.push(m.from_json)
+    }
+  }
+  await forEachInThread(id, mid => messageMoveToFolder(mid, destFolderId))
+  if (leavingSpam) for (const f of froms) await forgetSenderRules(db, account.id, f)
+}
+
+/** UI entry points: act on the whole thread row. Rules and "run now" keep using the single-message functions. */
+export const threadMoveToFolder = moveThreadFromRow
+export async function threadArchive(id: number): Promise<void> {
+  const db = await getDb()
+  const { account } = await loadContext(db, id)
+  const dest = await findFolderByRole(db, account.id, 'archive')
+  if (!dest) throw new Error('This account has no Archive folder.')
+  await moveThreadFromRow(id, Number(dest.id))
+}
+export async function threadDelete(id: number): Promise<void> {
+  await forEachInThread(id, mid => messageDelete(mid))
 }
 
 /** Moves one message to Spam. Used by rules, so it must not create rules or touch the thread. */
