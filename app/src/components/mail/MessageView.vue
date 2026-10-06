@@ -47,7 +47,10 @@ const ui = useUiStore()
 const engine = useEngine()
 
 const currentFolderName = computed(() => mail.detail && (mail.foldersByAccount[mail.detail.accountId] ?? []).find(f => f.id === mail.detail!.folderId)?.name)
-const currentAccountName = computed(() => mail.detail && accounts.byId.get(mail.detail.accountId)?.name)
+const inSpamFolder = computed(
+  () => !!mail.detail && (mail.foldersByAccount[mail.detail.accountId] ?? []).find(f => f.id === mail.detail!.folderId)?.role === 'spam',
+)
+const currentAccountName =computed(() => mail.detail && accounts.byId.get(mail.detail.accountId)?.name)
 
 // ---------- images + html rendering ----------
 
@@ -233,7 +236,11 @@ const doSpam = () => {
 }
 function confirmSpam(futureAction: 'spam' | 'delete') {
   spamAsk.value = false
-  if (mail.detail) void guarded(() => mail.spam(mail.detail!.id, futureAction))
+  if (!mail.detail) return
+  void guarded(async () => {
+    const ruleMade = await mail.spam(mail.detail!.id, futureAction)
+    if (!ruleMade) toast.info('Moved to Spam. No rule was made for this sender.')
+  })
 }
 const doDelete = () => mail.detail && guarded(() => mail.remove(mail.detail!.id))
 const toggleUnread = () => mail.detail && guarded(() => mail.setFlag(mail.detail!.id, 'seen', !mail.detail!.seen))
@@ -323,18 +330,13 @@ function addrLine(list: { name: string; address: string }[]): string {
     <div v-else-if="mail.detail" class="flex-1 flex flex-col min-h-0">
       <div class="h-10 shrink-0 flex items-center gap-1 px-3 border-b text-muted-foreground">
         <Tooltip><TooltipTrigger as-child><Button size="icon" variant="ghost" @click="doArchive"><Archive class="size-4" /></Button></TooltipTrigger><TooltipContent>Archive</TooltipContent></Tooltip>
-        <Tooltip><TooltipTrigger as-child><Button size="icon" variant="ghost" @click="doSpam"><ShieldAlert class="size-4" /></Button></TooltipTrigger><TooltipContent>Spam</TooltipContent></Tooltip>
+        <Tooltip v-if="!inSpamFolder"><TooltipTrigger as-child><Button size="icon" variant="ghost" @click="doSpam"><ShieldAlert class="size-4" /></Button></TooltipTrigger><TooltipContent>Spam</TooltipContent></Tooltip>
         <Tooltip><TooltipTrigger as-child><Button size="icon" variant="ghost" @click="doDelete"><Trash2 class="size-4" /></Button></TooltipTrigger><TooltipContent>Delete</TooltipContent></Tooltip>
         <span class="w-px h-5 bg-border mx-1" />
         <DropdownMenu v-if="moveTargets.length">
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <DropdownMenuTrigger as-child>
-                <Button size="icon" variant="ghost"><FolderInput class="size-4" /></Button>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent>Move to</TooltipContent>
-          </Tooltip>
+          <DropdownMenuTrigger as-child>
+            <Button size="icon" variant="ghost" title="Move to"><FolderInput class="size-4" /></Button>
+          </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem v-for="f in moveTargets" :key="f.id" @click="moveToFolder(f.id)">{{ f.name }}</DropdownMenuItem>
           </DropdownMenuContent>

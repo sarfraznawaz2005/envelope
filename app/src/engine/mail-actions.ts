@@ -253,10 +253,10 @@ async function ensureSenderRule(db: Database, accountId: number, address: string
 
 /**
  * The Spam button: moves the whole thread to Spam and adds a rule so future mail from this
- * sender is handled too (`futureAction`: moved to Spam, or deleted). No rule is made for the
- * account's own address.
+ * sender is handled too (`futureAction`: moved to Spam, or deleted). For the account's own
+ * address the rule also needs the sender name. Returns false when no rule could be made.
  */
-export async function messageSpam(id: number, futureAction: 'spam' | 'delete' = 'spam'): Promise<void> {
+export async function messageSpam(id: number, futureAction: 'spam' | 'delete' = 'spam'): Promise<boolean> {
   const db = await getDb()
   const { row, account } = await loadContext(db, id)
   const dest = await findFolderByRole(db, account.id, 'spam')
@@ -281,8 +281,19 @@ export async function messageSpam(id: number, futureAction: 'spam' | 'delete' = 
     }
   }
 
-  const sender = addrList(row.from_json)[0]?.address?.trim().toLowerCase()
-  if (sender && sender !== account.email.trim().toLowerCase()) await ensureSenderRule(db, account.id, sender, futureAction)
+  const from = addrList(row.from_json)[0]
+  const address = from?.address?.trim().toLowerCase()
+  if (!address) return false
+  if (address !== account.email.trim().toLowerCase()) {
+    await ensureSenderRule(db, account.id, address, futureAction)
+    return true
+  }
+  // Own address (usually a spoofed sender): match name + address together so real mail from
+  // you is never caught. Rule matching sees `from` as "<name> <address>".
+  const name = from?.name?.trim().toLowerCase()
+  if (!name || name === address) return false
+  await ensureSenderRule(db, account.id, `${name} ${address}`, futureAction)
+  return true
 }
 
 export async function messageDelete(id: number): Promise<void> {
