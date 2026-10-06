@@ -1,4 +1,14 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import AccountSetupView from '@/views/AccountSetupView.vue'
+import ComposeView from '@/views/ComposeView.vue'
+import ContactsView from '@/views/ContactsView.vue'
+import MailView from '@/views/MailView.vue'
+import SettingsView from '@/views/SettingsView.vue'
+
+// These pages are bundled with the app (not lazy-loaded). When they were separate chunks, a
+// chunk request that failed or hung (stale files, service worker, a host app that blocks or
+// delays requests) left the page blank under a working header. A local app gains nothing from
+// lazy pages, so there is no chunk to fail.
 
 // The dev tools page can send real mail from a real account and probe arbitrary hosts through
 // the relay — useful while building the app, not something a production build should expose
@@ -9,17 +19,17 @@ const devRoutes: RouteRecordRaw[] = import.meta.env.DEV ? [{ path: '/dev', name:
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', name: 'mail', component: () => import('@/views/MailView.vue') },
-    { path: '/compose', name: 'compose', component: () => import('@/views/ComposeView.vue') },
-    { path: '/contacts', name: 'contacts', component: () => import('@/views/ContactsView.vue') },
-    { path: '/settings/:tab?', name: 'settings', component: () => import('@/views/SettingsView.vue') },
-    { path: '/setup', name: 'setup', component: () => import('@/views/AccountSetupView.vue') },
+    { path: '/', name: 'mail', component: MailView },
+    { path: '/compose', name: 'compose', component: ComposeView },
+    { path: '/contacts', name: 'contacts', component: ContactsView },
+    { path: '/settings/:tab?', name: 'settings', component: SettingsView },
+    { path: '/setup', name: 'setup', component: AccountSetupView },
     ...devRoutes,
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })
 
-// Pages load as separate chunks the first time you open them. If the app has been open a while
+// Safety net for any page still loaded as a separate chunk (the dev page). If the app has been open a while
 // and the files changed or the server hiccuped, that load fails and vue-router drops the click
 // silently — the button "does nothing". On such a failure, do a full page load of the target
 // (which fetches fresh files). The sessionStorage flag stops an endless reload loop.
