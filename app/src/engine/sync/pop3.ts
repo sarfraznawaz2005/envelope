@@ -116,6 +116,7 @@ export async function syncPop3Inbox(
         const threadId = await linkThread(db, accountId, parsed.subject, dateMs)
         await db.exec('UPDATE messages SET thread_id = ? WHERE id = ?', [threadId, msgId])
         await db.exec('UPDATE threads SET unread = unread + 1 WHERE id = ?', [threadId])
+        await db.exec('DELETE FROM messages_fts WHERE rowid = ?', [msgId])
         await db.exec('INSERT INTO messages_fts (rowid, subject, from_text, to_text, body) VALUES (?, ?, ?, ?, ?)', [msgId, parsed.subject, fromText, toText, parsed.text ?? ''])
 
         if (rules.length) {

@@ -52,6 +52,7 @@ export async function syncFolderHeaders(db: Database, client: ImapClient, accoun
   const st = await client.select(folder.path, true)
   let uidvalidity = folder.uidvalidity
   if (uidvalidity != null && st.uidValidity != null && uidvalidity !== st.uidValidity) {
+    await db.exec('DELETE FROM messages_fts WHERE rowid IN (SELECT id FROM messages WHERE folder_id = ?)', [folder.id])
     await db.exec('DELETE FROM messages WHERE folder_id = ?', [folder.id])
     uidvalidity = null
   }
@@ -149,6 +150,9 @@ export async function syncFolderHeaders(db: Database, client: ImapClient, accoun
         const threadId = await linkThread(db, accountId, env.subject, dateMs)
         await db.exec('UPDATE messages SET thread_id = ? WHERE id = ?', [threadId, id])
         if (!hasFlag(flags, '\\Seen')) await db.exec('UPDATE threads SET unread = unread + 1 WHERE id = ?', [threadId])
+        // Row ids get reused after deletes, and some delete paths leave the old FTS row behind.
+        // A stale row with the same rowid makes this INSERT fail with "constraint failed".
+        await db.exec('DELETE FROM messages_fts WHERE rowid = ?', [id])
         await db.exec('INSERT INTO messages_fts (rowid, subject, from_text, to_text, body) VALUES (?, ?, ?, ?, ?)', [id, env.subject, fromText, toText, ''])
         return id
       })
