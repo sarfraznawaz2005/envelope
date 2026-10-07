@@ -1,7 +1,7 @@
 /** UI-side cache of sender labels, shared by the message list and the message view. */
 import { useEngine } from '@/engine'
 import type { SenderLabel } from '@/shared/rpc'
-import { reactive } from 'vue'
+import { reactive, watch } from 'vue'
 
 /** Full class strings, so Tailwind can see them. */
 export const LABEL_COLORS: Record<string, string> = {
@@ -19,15 +19,29 @@ export const LABEL_COLORS: Record<string, string> = {
 const labels = reactive(new Map<string, SenderLabel>())
 let loaded = false
 
-export async function loadSenderLabels() {
-  if (loaded) return
-  loaded = true
+async function fetchLabels() {
   try {
     const list = await useEngine().api.senderLabelsList()
     labels.clear()
     for (const l of list) labels.set(l.email, l)
   } catch {
     loaded = false
+  }
+}
+
+export function loadSenderLabels() {
+  if (loaded) return
+  loaded = true
+  // After a page refresh this runs before the engine worker exists, so wait for it — otherwise
+  // the call throws and the saved labels never load.
+  const engine = useEngine()
+  if (engine.ready.value) void fetchLabels()
+  else {
+    const stop = watch(engine.ready, ready => {
+      if (!ready) return
+      stop()
+      void fetchLabels()
+    })
   }
 }
 
